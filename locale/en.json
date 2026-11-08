@@ -1,0 +1,1 @@
+{ "meta": { "title": "Secrets", "description": "Lets the agent request API keys and passwords through a secure form. Values go to a 0600 dotenv file and never reach the model; reads of the file are denied and leaked values are redacted from tool output." } }

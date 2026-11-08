@@ -1,0 +1,6 @@
+# Mounts the Host half: request_secret tool, read guard, output redaction,
+# exfiltration approval, submit routes and the secrets skill. The Client half
+# is discovered from `dsh.client` in package.json.
+- insert:
+    - id: dsh-secrets
+      name: dsh-secrets
