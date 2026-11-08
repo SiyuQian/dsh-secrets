@@ -37,6 +37,8 @@
       "inject": [
         "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-tool",
         "@deepseek-ai/dsh-client-ui-settings"
       ]
@@ -62,5 +64,9 @@
   "author": "Siyu Qian",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "devDependencies": {
+    "react": "18.3.1",
+    "react-test-renderer": "18.3.1"
   }
 }

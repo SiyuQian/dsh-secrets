@@ -2,17 +2,17 @@
 
 A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets the agent ask you for API keys, passwords, and tokens through a secure form, without the values ever reaching the model.
 
-[中文说明](#中文说明)
-
 ## How it works
 
 1. The agent calls `request_secret` with the variable names, a purpose, and a dotenv file.
-2. A password form appears in that tool row in the conversation.
+2. A password form opens above the chat input and focuses the first field. It stays accessible even when the conversation's work details are collapsed; the tool row shows the request status.
 3. You type the values. They travel over an authenticated `/api/dsh-secrets.*` route straight to the Host. They are never a tool argument, a tool result, or a session event.
 4. The values are written to the dotenv file with mode `0600`. Existing lines, comments, and line endings are kept.
 5. The agent receives only `{ status, path, names, added, updated, unchanged, kept }`.
 
 The bundled `secrets` skill teaches the agent when and how to call the tool.
+
+Repository documentation is written in English. The plugin also includes a Chinese UI translation that follows the Harness locale setting.
 
 ## Defences
 
@@ -29,7 +29,7 @@ Other rules:
 - Subagents and `run_code` (PTC) programs cannot open the form.
 - After you cancel, the same names cannot be requested again in that turn.
 
-**Settings → Secrets** lists the managed variables. You can stop managing one, or delete it from its file. The page does not show values.
+**Settings → Secrets** lists each managed variable in a responsive card, with its full file path, fingerprint, update time, and actions. Long names and paths wrap within the panel instead of requiring horizontal scrolling. You can stop managing a variable, or delete it from its file. The page does not show values.
 
 ## Known limits
 
@@ -73,7 +73,8 @@ Optional. Set these in your profile `cordis.patch.yml`:
 ## Development
 
 ```
-npm test   # node:test, no dependencies
+npm ci --ignore-scripts
+npm test   # node:test; Client tests use React and react-test-renderer
 ```
 
 | File | Contents |
@@ -83,27 +84,9 @@ npm test   # node:test, no dependencies
 | `lib/redactor.js` | Value-variant redaction |
 | `lib/policy.js` | L1 and L3 rules |
 | `lib/store.js` | Atomic `0600` writes with sha256 conflict retry, and the registry |
-| `client/client.js` | Form toolview and settings page (plain JS, no build step) |
+| `client/client.js` | Credential input dock, tool status, and settings cards (plain JS, no build step) |
 | `docs/api-findings.md` | The Harness APIs this plugin relies on, with sources |
 
 ## License
 
 MIT
-
----
-
-## 中文说明
-
-Agent 需要 API key、密码或 token 时，调用 `request_secret`，对话里会弹出一个密码表单。
-
-- 你填写的值直接写入工作目录里的 dotenv 文件，权限 0600。
-- 这些值**不会进入模型上下文，也不会写进会话记录**。
-- Agent 只拿到文件路径、变量名和数量。
-
-插件在 skill 约束之外，还加了三道防线：
-
-- **L1 读取拦截**：读取这些文件的工具调用一律拒绝。
-- **L2 输出脱敏**：任何工具输出里出现的值（包括它的常见编码形式）都会被替换掉。
-- **L3 外发确认**：命令同时用到 secret 和 `curl`、`echo` 这类命令时，要先经过你的确认。
-
-已知限制：如果 agent 自己写程序，读出值并做任意变换后再外发，这些防线无法完全拦住。请只在可信的工作区中使用。

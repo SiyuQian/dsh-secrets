@@ -1,22 +1,22 @@
-# 阶段 0：DSH API 调研结论（DSH 0.2.2-rc.1）
+# DSH API findings (DSH 0.2.2-rc.1)
 
-来源：`/Applications/DeepSeek Harness.app/Contents/Resources/app.asar` 解包后的 `dsh/node_modules/@deepseek-ai/*`，以及 profile 中已安装的第三方插件 `dsh-plugin-github`、`dsh-visual-workflow`、`dsh-pocket`。
+Sources: the installed `@deepseek-ai/*` packages shipped in the DSH desktop application, live Cordis inspection, and the profile-installed third-party plugins `dsh-plugin-github`, `dsh-visual-workflow`, and `dsh-pocket`. Package paths and line references below describe the inspected version; they are not stable API identifiers.
 
-| # | 问题 | 结论 | 出处 |
+| # | Question | Finding | Source |
 |---|---|---|---|
-| Q1 | Client→Host 独立提交通道 | ✅ `ctx.connection.fetch.register({ path: '/api/<method>', methods: ['POST'], requestBody: 'buffered', fetch })`。浏览器调用 `ctx.get('connection').rpc.call('/api', method, payload)`。**不写会话日志**：这条通道不经过 session、commands 或 tools。 | `dsh-plugin-github/lib/index.js` 的 `payloadRoute`；`dsh-client-connection/lib/index.js:823-851` |
-| Q2 | 认证 | ✅ `/api` 前缀路由会先调用 `connection.admit(req)`，检查可信 Host/Origin 和浏览器 cookie，失败返回 401/403，之后才会分发到 fetch 路由。nonce 不需要。 | `dsh-client-connection/lib/index.js:1044-1058` |
-| Q3 | `shellEnv` 运行时动态 key | ❌ contributor 必须预先声明 `variables`，返回未声明的 key 会直接报错。v1 不做 session 注入，只支持 dotenv。 | `dsh-shell-env` README「Adding your own environment facts」 |
-| Q4 | 阻塞中的工具卡片能否放交互表单 | ✅ `ctx.slots.register({ name: 'tool.call.toolview', key: '<toolName>' }, Component)`。Component 的 props 为 `{ callId, toolName, phase: 'preparing'｜'start'｜result, block }`，`start` 阶段可以从 `block.argsRaw` 拿到参数。工具 body 阻塞期间 phase 保持 `start`。 | `dsh-client-ui-tool` README:38-52；`dsh-client-ui-skill` 的 `SkillRow` |
-| Q5 | post-execute 的覆盖面 | ✅ 所有工具（包括子代理内部的调用）都会经过共享 pipeline 的 `tools/post-execute`。监听器签名为 `(exec, result, next)`，返回 `{kind:'accept', content}` 可替换 content，返回 `{kind:'block', feedback}` 可阻断。spill-policy 在 `next()` 之后运行，我们的监听器先调用 `next()` 再脱敏，因此 spill 写盘前的 content 就已经脱敏（spill 写入的是 decision.content）。PTC 子调用的 canonical value 不受影响，所以检测到 `exec.parent` 时直接拒绝 `request_secret`。 | `dsh-tools/lib/types/pipeline.js:411-458`；`dsh-spill-policy/lib/index.js:237` |
-| Q6 | 设置页 slot | ✅ `ctx.slots.register({ name: 'settings.section', id, order, label: () => string, inject: () => props }, Component)` | `dsh-pocket/client/index.jsx:680`；`dsh-client-ui-agent-preset` |
+| Q1 | Separate Client-to-Host submission channel | Supported through `ctx.connection.fetch.register({ path: '/api/<method>', methods: ['POST'], requestBody: 'buffered', fetch })`. The browser calls `ctx.get('connection').rpc.call('/api', method, payload)`. **This channel does not write to the session log:** it bypasses sessions, commands, and tools. | `payloadRoute` in `dsh-plugin-github/lib/index.js`; `dsh-client-connection/lib/index.js:823–851` |
+| Q2 | Authentication | Routes under `/api` first call `connection.admit(req)` to check the trusted Host/Origin and browser cookie. Failed admission returns 401/403 before dispatch to the fetch route. No separate nonce is needed. | `dsh-client-connection/lib/index.js:1044–1058` |
+| Q3 | Dynamic runtime keys in `shellEnv` | Not supported. A contributor must declare `variables` in advance; returning an undeclared key raises an error. Version 1 therefore uses dotenv files rather than session environment injection. | `dsh-shell-env` README, “Adding your own environment facts” |
+| Q4 | Credential input without expanding a process group | Put the active form in the session-scoped `conversation.input.dock` list, not inside the tool row. Select the latest open Turn with `useChat`, then subscribe to that Turn's tool projection through `nodes.turnDataSource(turn, 'tool-call')` and `useSyncExternalStore`. Each `{ root }` includes tools hidden by collapsed groups. Show a form only for `request_secret` with `root.phase === 'start'`, and key it by `sessionId + callId` to reset local state. `tool.call.toolview` shows only the summary and settled receipt. | Live `Slots.listSubTree('conversation.input.dock')`; `dsh-client-ui-chat` README:90 and `lib/client.js:10582–10608,10647–10649,15318–15331` |
+| Q5 | Post-execute coverage | All tools, including calls inside subagents, pass through the shared `tools/post-execute` pipeline. A listener receives `(exec, result, next)`; `{ kind: 'accept', content }` replaces content, and `{ kind: 'block', feedback }` withholds it. The spill policy runs after `next()`; this plugin calls `next()` before redacting, so `decision.content` is redacted before it is written to a spill file. PTC child calls retain a separate canonical value, so `request_secret` rejects any execution with `exec.parent`. | `dsh-tools/lib/types/pipeline.js:411–458`; `dsh-spill-policy/lib/index.js:237` |
+| Q6 | Settings page slot | Register with `ctx.slots.register({ name: 'settings.section', id, order, label: () => string, inject: () => props }, Component)`. | `dsh-pocket/client/index.jsx:680`; `dsh-client-ui-agent-preset` |
 
-## 其他确认项
+## Additional findings
 
-- **Guard**：`ctx.tools.guard(exec => reason | undefined)` 是同步、单调的；其他插件的 allow 不能推翻它。`pre-execute` 返回 `{kind:'ask', reason, displayReason}` 时，由 `ctx.get('approval')` 弹出用户确认。没有 approval 服务时降级为 deny（fail-closed）。
-- **参数**：参数会被 deepFreeze，pre-execute 不能改写参数。这与设计一致：v1 不做参数注入。
-- **人机交互**：只允许 runtime root 发起。判断方式为 `ctx.get('agents').roots().includes(agent)`，与 `userQuestions` 相同。
-- **Skill**：`ctx.skills.registerProvider(() => ({ name, list, get }))`，可参照 `dsh-skill-office` 的实现。
-- **工具注册**：`ctx.tools.register(definition)`。definition 必须包含 `output: { schema, render }`，parameters 使用原生 JSON Schema。参照 `dsh-visual-workflow` 的自写 defineTool。
-- **超时**：只有 definition 声明了 `timeoutMs` 才会被截止，我们的超时自己管理。
-- **主题 token**：`--dsw-alias-label-{primary,secondary,tertiary}`、`--dsw-alias-bg-layer-{1,2}`、`--dsw-alias-border-l{1,2}`、`--dsw-alias-state-{error,warn,success}-primary`、`--dsw-alias-button-primary-fill`、`--dsw-alias-interactive-bg-hover`。
+- **Read guard:** `ctx.tools.guard(exec => reason | undefined)` is synchronous and monotonic. An allow from another plugin cannot override its denial. A `pre-execute` result of `{ kind: 'ask', reason, displayReason }` requests user confirmation through `ctx.get('approval')`. The inspected contract defines `displayReason` as a locale map with a required `en` entry, not a plain string. Without an approval service, execution is denied (fail-closed).
+- **Arguments:** Tool arguments are deep-frozen; pre-execute listeners cannot rewrite them. This matches the version 1 design, which does not inject argument values.
+- **Interactive requests:** Only runtime roots may initiate the form, checked with `ctx.get('agents').roots().includes(agent)`, following the `userQuestions` pattern.
+- **Skills:** Register a provider with `ctx.skills.registerProvider(() => ({ name, list, get }))`; see the `dsh-skill-office` implementation.
+- **Tool registration:** `ctx.tools.register(definition)` requires `output: { schema, render }`; parameters use native JSON Schema. The custom `defineTool` in `dsh-visual-workflow` provides an example.
+- **Timeouts:** The framework applies a tool deadline only when its definition declares `timeoutMs`. This plugin manages the form timeout itself.
+- **Theme tokens:** The inspected UI uses `--dsw-alias-label-{primary,secondary,tertiary}`, `--dsw-alias-bg-layer-{1,2}`, `--dsw-alias-border-l{1,2}`, `--dsw-alias-state-{error,warn,success}-primary`, `--dsw-alias-button-primary-fill`, and `--dsw-alias-interactive-bg-hover`.
