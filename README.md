@@ -7,7 +7,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin tha
 ## How it works
 
 1. The agent calls `request_secret` with the variable names, a purpose, and a dotenv file.
-2. A password form appears in that tool row in the conversation.
+2. A password form opens above the chat input and focuses the first field. It stays accessible even when the conversation's work details are collapsed; the tool row shows the request status.
 3. You type the values. They travel over an authenticated `/api/dsh-secrets.*` route straight to the Host. They are never a tool argument, a tool result, or a session event.
 4. The values are written to the dotenv file with mode `0600`. Existing lines, comments, and line endings are kept.
 5. The agent receives only `{ status, path, names, added, updated, unchanged, kept }`.
@@ -29,7 +29,7 @@ Other rules:
 - Subagents and `run_code` (PTC) programs cannot open the form.
 - After you cancel, the same names cannot be requested again in that turn.
 
-**Settings → Secrets** lists the managed variables. You can stop managing one, or delete it from its file. The page does not show values.
+**Settings → Secrets** lists each managed variable in a responsive card, with its full file path, fingerprint, update time, and actions. Long names and paths wrap within the panel instead of requiring horizontal scrolling. You can stop managing a variable, or delete it from its file. The page does not show values.
 
 ## Known limits
 
@@ -73,7 +73,8 @@ Optional. Set these in your profile `cordis.patch.yml`:
 ## Development
 
 ```
-npm test   # node:test, no dependencies
+npm ci --ignore-scripts
+npm test   # node:test; Client tests use React and react-test-renderer
 ```
 
 | File | Contents |
@@ -83,7 +84,7 @@ npm test   # node:test, no dependencies
 | `lib/redactor.js` | Value-variant redaction |
 | `lib/policy.js` | L1 and L3 rules |
 | `lib/store.js` | Atomic `0600` writes with sha256 conflict retry, and the registry |
-| `client/client.js` | Form toolview and settings page (plain JS, no build step) |
+| `client/client.js` | Credential input dock, tool status, and settings cards (plain JS, no build step) |
 | `docs/api-findings.md` | The Harness APIs this plugin relies on, with sources |
 
 ## License

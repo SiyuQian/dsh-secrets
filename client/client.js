@@ -1,5 +1,5 @@
-// dsh-secrets Client half: the secure form rendered in place of the
-// request_secret tool row, and a Settings page listing managed variables.
+// dsh-secrets Client half: a secure form above the chat input, tool receipts,
+// and a Settings page listing managed variables.
 // Values go straight to the Host over /api/dsh-secrets.submit and are cleared
 // from component state right after; nothing is persisted in the browser.
 window.__ModuleLoader__.load({
@@ -7,7 +7,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const { useEffect, useRef, useState, useCallback } = React;
+    const { useEffect, useRef, useState, useCallback, useMemo, useSyncExternalStore } = React;
 
     const NS = 'dsh-secrets';
     const M = {
@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
 
     const zh = {
       title: '请求凭据',
-      waiting: '等待你填写凭据…',
+      waiting: '请在聊天输入框上方填写凭据。',
       loading: '正在加载表单…',
       purpose: '用途',
       writesTo: '将写入',
@@ -56,7 +56,7 @@ window.__ModuleLoader__.load({
     };
     const en = {
       title: 'Credential request',
-      waiting: 'Waiting for you to enter credentials…',
+      waiting: 'Enter your credentials above the chat input.',
       loading: 'Loading form…',
       purpose: 'Purpose',
       writesTo: 'Will be written to',
@@ -92,14 +92,16 @@ window.__ModuleLoader__.load({
     };
 
     const STYLE = `
-.dshs-card{border:1px solid var(--dsw-alias-border-l2);border-left:3px solid var(--dsw-alias-state-warn-primary);border-radius:10px;background:var(--dsw-alias-bg-layer-1);margin:6px 0;overflow:hidden;font-size:13px;color:var(--dsw-alias-label-primary)}
+.dshs-dock{min-width:0;max-height:50vh;overflow-y:auto;overscroll-behavior:contain}
+.dshs-card{box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;border:1px solid var(--dsw-alias-border-l2);border-left:3px solid var(--dsw-alias-state-warn-primary);border-radius:10px;background:var(--dsw-alias-bg-layer-1);margin:6px 0;overflow:hidden;font-size:13px;color:var(--dsw-alias-label-primary)}
 .dshs-head{display:flex;gap:10px;align-items:flex-start;padding:12px 14px}
+.dshs-head>div{min-width:0}
 .dshs-lock{flex:none;width:18px;height:18px;color:var(--dsw-alias-state-warn-primary);margin-top:1px}
 .dshs-title{font-weight:600;font-size:14px}
 .dshs-sub{color:var(--dsw-alias-label-secondary);margin-top:2px}
 .dshs-body{padding:4px 14px 12px;border-top:1px solid var(--dsw-alias-border-l1)}
 .dshs-field{margin-top:10px}
-.dshs-label{display:flex;gap:8px;align-items:baseline;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.dshs-label{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
 .dshs-desc{color:var(--dsw-alias-label-tertiary);font-family:inherit;font-size:12px}
 .dshs-row{display:flex;gap:6px;margin-top:4px}
 .dshs-input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;outline:none}
@@ -117,14 +119,22 @@ window.__ModuleLoader__.load({
 .dshs-done{display:flex;gap:8px;align-items:center;padding:8px 12px;color:var(--dsw-alias-label-secondary)}
 .dshs-done b{color:var(--dsw-alias-label-primary);font-weight:500}
 .dshs-ok{color:var(--dsw-alias-state-success-primary)}
-.dshs-page{padding:24px 28px;max-width:960px;color:var(--dsw-alias-label-primary);font-size:13px}
-.dshs-page h2{font-size:18px;margin:0 0 8px}
+.dshs-page{box-sizing:border-box;width:100%;min-width:0;max-width:960px;padding:24px clamp(12px,4vw,28px);color:var(--dsw-alias-label-primary);font-size:13px;overflow-wrap:anywhere}
+.dshs-page h2{font-size:18px;margin:0;min-width:0}
 .dshs-page p{color:var(--dsw-alias-label-secondary);line-height:1.6}
-.dshs-table{width:100%;border-collapse:collapse;margin-top:12px}
-.dshs-table th,.dshs-table td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);vertical-align:top}
-.dshs-table th{color:var(--dsw-alias-label-tertiary);font-weight:500}
+.dshs-page-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}
+.dshs-entries{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;list-style:none;margin:16px 0 0;padding:0}
+.dshs-entry{min-width:0;padding:14px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.dshs-entry h3{margin:0;font-size:13px;font-weight:600}
+.dshs-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;margin:14px 0}
+.dshs-details>div{min-width:0}
+.dshs-details .dshs-file{grid-column:1/-1}
+.dshs-details dt{color:var(--dsw-alias-label-secondary);font-size:12px}
+.dshs-details dd{margin:4px 0 0;overflow-wrap:anywhere}
+.dshs-entry-actions{display:flex;flex-wrap:wrap;gap:8px}
+.dshs-page .dshs-btn{max-width:100%;height:auto;min-height:32px;padding:6px 12px;white-space:normal;overflow-wrap:anywhere}
 .dshs-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
-.dshs-warn{color:var(--dsw-alias-state-warn-primary);font-size:12px}
+.dshs-warn{color:var(--dsw-alias-state-warn-primary);font-size:12px;margin-top:6px}
 .dshs-limits{margin-top:18px;padding:10px 12px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.6}
 `;
 
@@ -177,7 +187,7 @@ window.__ModuleLoader__.load({
             const value = await api(M.describe, { callId });
             if (!alive) return;
             setForm(value);
-            // The tool row can mount before the Host registers the pending form.
+            // The dock can mount before the Host registers the pending form.
             if (!value.open) timer = setTimeout(load, 700);
           } catch (e) {
             if (alive) setError(e.message);
@@ -213,10 +223,20 @@ window.__ModuleLoader__.load({
       }, [form, values, busy, callId]);
 
       const cancel = useCallback(async () => {
+        if (busy) return;
         setValues({});
-        try { await api(M.cancel, { callId }); } catch (e) { setError(e.message); }
-      }, [callId]);
+        setBusy(true);
+        try {
+          await api(M.cancel, { callId });
+          setForm({ open: false, done: true });
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setBusy(false);
+        }
+      }, [callId, busy]);
 
+      if (form?.done) return null;
       const names = Array.isArray(args.names) ? args.names : [];
       if (!form || !form.open) {
         return h('div', { className: 'dshs-card' }, h(Style),
@@ -282,7 +302,29 @@ window.__ModuleLoader__.load({
           kept ? h('span', null, kept) : null));
     }
 
-    function makeToolView(api) {
+    const EMPTY_CALLS = [];
+    const EMPTY_SOURCE = { getSnapshot: () => EMPTY_CALLS, subscribe: () => () => {} };
+
+    function openTurn(snapshot) {
+      const turn = snapshot.timeline.turnOrder.at(-1);
+      return snapshot.timeline.turns.get(turn)?.status === 'open' ? turn : undefined;
+    }
+
+    function makeSecretDock(api) {
+      return function SecretDock({ useChat, sessionId, t }) {
+        const turn = useChat(openTurn);
+        const nodes = useChat((snapshot) => snapshot.nodes);
+        // This projected source includes tools hidden by collapsed process groups.
+        const source = useMemo(() => turn === undefined ? EMPTY_SOURCE : nodes.turnDataSource(turn, 'tool-call'), [nodes, turn]);
+        const calls = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+        const active = calls.find(({ root }) => root.phase === 'start' && root.name === 'request_secret' && !('kind' in root))?.root;
+        if (!active) return null;
+        return h('div', { className: 'dshs-dock' },
+          h(SecretForm, { key: `${sessionId}:${active.callId}`, callId: active.callId, api, t, args: parseArgs(active.argsRaw) }));
+      };
+    }
+
+    function makeToolView() {
       return function RequestSecretView(props) {
         const t = props.t ?? ((k) => en[k] ?? k);
         if (props.phase === 'preparing') {
@@ -294,8 +336,30 @@ window.__ModuleLoader__.load({
         const argsRaw = (settled ? block.call?.argsRaw : block.argsRaw) ?? '';
         const args = parseArgs(argsRaw);
         if (settled) return h(SecretSettled, { block, t, args });
-        return h(SecretForm, { callId: props.callId ?? block.callId, api, t, args });
+        const names = Array.isArray(args.names) ? args.names : [];
+        return h('div', { className: 'dshs-card' }, h(Style),
+          h('div', { className: 'dshs-head' }, h(LockIcon),
+            h('div', null,
+              h('div', { className: 'dshs-title' }, `${t('title')}: ${names.join(', ')}`),
+              h('div', { className: 'dshs-sub' }, t('waiting')))));
       };
+    }
+
+    function CredentialEntry({ entry, t, remove }) {
+      return h('article', { className: 'dshs-entry' },
+        h('h3', { className: 'dshs-mono' }, entry.name),
+        entry.tooShort ? h('div', { className: 'dshs-warn' }, t('tooShort')) : null,
+        h('dl', { className: 'dshs-details' },
+          h('div', { className: 'dshs-file' },
+            h('dt', null, t('colFile')), h('dd', { className: 'dshs-mono' }, entry.path)),
+          h('div', null,
+            h('dt', null, t('colFp')), h('dd', { className: 'dshs-mono' }, entry.fingerprint)),
+          h('div', null,
+            h('dt', null, t('colUpdated')), h('dd', null,
+              h('time', { dateTime: entry.updatedAt }, new Date(entry.updatedAt).toLocaleString())))),
+        h('div', { className: 'dshs-entry-actions' },
+          h('button', { type: 'button', className: 'dshs-btn', onClick: () => remove(entry, false) }, t('untrack')),
+          h('button', { type: 'button', className: 'dshs-btn dshs-danger', onClick: () => remove(entry, true) }, t('delete'))));
     }
 
     function makeSettings(api) {
@@ -317,23 +381,15 @@ window.__ModuleLoader__.load({
           load();
         };
         return h('div', { className: 'dshs-page' }, h(Style),
-          h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+          h('div', { className: 'dshs-page-head' },
             h('h2', null, t('settingsTitle')),
             h('button', { className: 'dshs-btn', onClick: load }, t('refresh'))),
           h('p', null, t('settingsIntro')),
           state.error ? h('div', { className: 'dshs-error' }, state.error) : null,
           !state.loading && state.entries.length === 0 ? h('p', null, t('empty')) : null,
-          state.entries.length > 0 ? h('table', { className: 'dshs-table' },
-            h('thead', null, h('tr', null,
-              h('th', null, t('colName')), h('th', null, t('colFile')), h('th', null, t('colFp')), h('th', null, t('colUpdated')), h('th', null))),
-            h('tbody', null, state.entries.map((e) => h('tr', { key: `${e.path}\0${e.name}` },
-              h('td', { className: 'dshs-mono' }, e.name, e.tooShort ? h('div', { className: 'dshs-warn' }, t('tooShort')) : null),
-              h('td', { className: 'dshs-mono' }, e.path),
-              h('td', { className: 'dshs-mono' }, e.fingerprint),
-              h('td', null, new Date(e.updatedAt).toLocaleString()),
-              h('td', { style: { whiteSpace: 'nowrap' } },
-                h('button', { className: 'dshs-btn', onClick: () => remove(e, false) }, t('untrack')), ' ',
-                h('button', { className: 'dshs-btn dshs-danger', onClick: () => remove(e, true) }, t('delete'))))))) : null,
+          state.entries.length > 0 ? h('ul', { className: 'dshs-entries' },
+            state.entries.map((entry) => h('li', { key: `${entry.path}\0${entry.name}` },
+              h(CredentialEntry, { entry, t, remove })))) : null,
           h('div', { className: 'dshs-limits' }, t('limits')));
       };
     }
@@ -345,8 +401,15 @@ window.__ModuleLoader__.load({
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-secrets: locale');
         const t = ctx.locale.bind(NS);
         const api = makeApi(ctx);
-        const ToolView = makeToolView(api);
+        const ToolView = makeToolView();
+        const SecretDock = makeSecretDock(api);
         const Settings = makeSettings(api);
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+          name: 'conversation.input.dock',
+          id: 'dsh-secrets',
+          order: -20,
+          locale: NS,
+        }, SecretDock));
         ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
           name: 'tool.call.toolview',
           key: 'request_secret',
