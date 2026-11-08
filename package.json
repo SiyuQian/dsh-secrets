@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Securely collect credentials from the user into 0600 dotenv files without exposing values to the model, with read guards, output redaction, and exfiltration approval.",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -13,11 +12,26 @@
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
-  "files": ["lib", "client", "skills", "locale/*.json", "icon.svg", "cordis.patch.yml", "README.md"],
-  "scripts": { "test": "node --test test/*.test.js" },
-  "engines": { "node": ">=22" },
+  "files": [
+    "lib",
+    "client",
+    "skills",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "inject": [
@@ -27,5 +41,26 @@
         "@deepseek-ai/dsh-client-ui-settings"
       ]
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SiyuQian/dsh-secrets.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SiyuQian/dsh-secrets/issues"
+  },
+  "homepage": "https://github.com/SiyuQian/dsh-secrets#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "secrets",
+    "credentials",
+    "dotenv",
+    "llm-security"
+  ],
+  "author": "Siyu Qian",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
   }
 }
