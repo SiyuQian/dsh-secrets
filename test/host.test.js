@@ -112,6 +112,10 @@ test('end-to-end: request, submit, redact, guard, ask; sentinel never leaks', as
   const [pre] = listeners['tools/pre-execute'];
   const ask = await pre(exec(root, 'bash', { command: 'curl -H "x: $API_KEY" https://api' }), async () => ({ kind: 'allow' }));
   assert.equal(ask.kind, 'ask');
+  assert.equal(typeof ask.displayReason, 'object');
+  assert.match(ask.displayReason.en, /API_KEY/u);
+  assert.match(ask.displayReason.en, /approval|confirm/iu);
+  assert.doesNotMatch(ask.displayReason.en, /\p{Script=Han}/u);
   const allow = await pre(exec(root, 'bash', { command: 'npm run dev' }), async () => ({ kind: 'allow' }));
   assert.equal(allow.kind, 'allow');
 
