@@ -20,6 +20,8 @@
     "icon.svg",
     "cordis.patch.yml",
     "README.md",
+    "README.zh-CN.md",
+    "docs/api-findings*.md",
     "LICENSE"
   ],
   "scripts": {

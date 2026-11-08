@@ -1,5 +1,7 @@
 # DSH API findings (DSH 0.2.2-rc.1)
 
+English | [简体中文](./api-findings.zh-CN.md)
+
 Sources: the installed `@deepseek-ai/*` packages shipped in the DSH desktop application, live Cordis inspection, and the profile-installed third-party plugins `dsh-plugin-github`, `dsh-visual-workflow`, and `dsh-pocket`. Package paths and line references below describe the inspected version; they are not stable API identifiers.
 
 | # | Question | Finding | Source |
@@ -13,7 +15,7 @@ Sources: the installed `@deepseek-ai/*` packages shipped in the DSH desktop appl
 
 ## Additional findings
 
-- **Read guard:** `ctx.tools.guard(exec => reason | undefined)` is synchronous and monotonic. An allow from another plugin cannot override its denial. A `pre-execute` result of `{ kind: 'ask', reason, displayReason }` requests user confirmation through `ctx.get('approval')`. The inspected contract defines `displayReason` as a locale map with a required `en` entry, not a plain string. Without an approval service, execution is denied (fail-closed).
+- **Read guard:** `ctx.tools.guard(exec => reason | undefined)` is synchronous and monotonic. An allow from another plugin cannot override its denial. A `pre-execute` result of `{ kind: 'ask', reason, displayReason }` requests user confirmation through `ctx.get('approval')`. The inspected contract defines `displayReason` as a locale map with a required `en` entry, not a plain string. This plugin also supplies `zh`; English remains the fallback. Without an approval service, execution is denied (fail-closed).
 - **Arguments:** Tool arguments are deep-frozen; pre-execute listeners cannot rewrite them. This matches the version 1 design, which does not inject argument values.
 - **Interactive requests:** Only runtime roots may initiate the form, checked with `ctx.get('agents').roots().includes(agent)`, following the `userQuestions` pattern.
 - **Skills:** Register a provider with `ctx.skills.registerProvider(() => ({ name, list, get }))`; see the `dsh-skill-office` implementation.

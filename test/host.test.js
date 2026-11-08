@@ -116,6 +116,10 @@ test('end-to-end: request, submit, redact, guard, ask; sentinel never leaks', as
   assert.match(ask.displayReason.en, /API_KEY/u);
   assert.match(ask.displayReason.en, /approval|confirm/iu);
   assert.doesNotMatch(ask.displayReason.en, /\p{Script=Han}/u);
+  assert.equal(typeof ask.displayReason.zh, 'string');
+  assert.match(ask.displayReason.zh, /API_KEY/u);
+  assert.match(ask.displayReason.zh, /确认|审批/u);
+  for (const message of Object.values(ask.displayReason)) assert.ok(!message.includes(SENTINEL));
   const allow = await pre(exec(root, 'bash', { command: 'npm run dev' }), async () => ({ kind: 'allow' }));
   assert.equal(allow.kind, 'allow');
 
