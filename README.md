@@ -1,5 +1,7 @@
 # dsh-secrets
 
+English | [简体中文](./README.zh-CN.md)
+
 A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets the agent ask you for API keys, passwords, and tokens through a secure form, without the values ever reaching the model.
 
 ## How it works
@@ -12,7 +14,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin tha
 
 The bundled `secrets` skill teaches the agent when and how to call the tool.
 
-Repository documentation is written in English. The plugin also includes a Chinese UI translation that follows the Harness locale setting.
+Documentation is available in English and Simplified Chinese, with English as the default entry point. The interface and approval prompts support both languages and follow the Harness locale setting, with English as the fallback.
 
 ## Defences
 
@@ -85,7 +87,9 @@ npm test   # node:test; Client tests use React and react-test-renderer
 | `lib/policy.js` | L1 and L3 rules |
 | `lib/store.js` | Atomic `0600` writes with sha256 conflict retry, and the registry |
 | `client/client.js` | Credential input dock, tool status, and settings cards (plain JS, no build step) |
-| `docs/api-findings.md` | The Harness APIs this plugin relies on, with sources |
+| [API findings](./docs/api-findings.md) / [API 调研结论](./docs/api-findings.zh-CN.md) | The Harness APIs this plugin relies on, with sources |
+
+Keep both documentation editions in sync when changing behavior, commands, or security limits. Code identifiers, protocol fields, and shared command examples remain in English. The bundled agent skill uses one English source so agents receive the same safety instructions in either UI language.
 
 ## License
 
