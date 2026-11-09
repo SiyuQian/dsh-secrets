@@ -49,6 +49,68 @@ test('L1 does not mistake environment properties or longer filenames for a manag
   }
 });
 
+test('L1 does not mistake optional environment access for a dotenv wildcard', () => {
+  for (const file of ['/w/other-project/.env', '/w/other-project/.env.local']) {
+    for (const command of [
+      `node -e 'console.log(process.env?.NODE_ENV)'`,
+      `node -e 'console.log(process.env?.["NODE_ENV"])'`,
+      `node -e 'process.env?.NODE_ENV'`,
+      `node --eval "console.log(process.env?.NODE_ENV)"`,
+      `kubectl exec deployment/app -- node -e 'connect(process.env?.DATABASE_URL)'`,
+    ]) {
+      assert.equal(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: new Set([file]) }), undefined, command);
+    }
+  }
+});
+
+test('L1 keeps denying dotenv wildcard reads with path and expansion prefixes', () => {
+  for (const file of ['/w/other-project/.env', '/w/other-project/.env.local']) {
+    for (const command of [
+      'cat .env*', 'cat .env?', 'cat .*env', 'cat *.env',
+      'cat /w/other-project/.env?', 'cat ../other-project/.env*',
+      'EMPTY=; cat $EMPTY.env?', 'set --; cat $1.env?',
+      'cat ${DIR}/.env?', 'cat .env?.local',
+      'unset EMPTY; cat ${EMPTY-.env*}', 'unset EMPTY; cat ${EMPTY:-.env*}',
+      'unset EMPTY; cat ${EMPTY-.env?}', 'unset EMPTY; cat ${EMPTY:-.env?}',
+      'unset process; cat $process.env?.local',
+      `node -e 'console.log(process.env?.NODE_ENV)' ; cat .env?`,
+    ]) {
+      assert.ok(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: new Set([file]) }), command);
+    }
+  }
+});
+
+test('L1 keeps denying suffix globs for custom managed dotenv filenames', () => {
+  for (const [file, command] of [
+    ['/w/other-project/.env.backup.env', 'cat .env.backup*.env'],
+    ['/w/other-project/.env.密码.env', 'cat .env.密码*.env'],
+    ['/w/other-project/.env.backup.env', 'cat .env.backup.*env'],
+    ['/w/other-project/.env.backup.envx', 'cat .env.backup.env?'],
+    ['/w/other-project/.env.密码.envx', 'cat .env.密码.env?'],
+    ['/w/other-project/.env.process.envx.local', 'cat .env.process.env?.local'],
+    ['/w/other-project/.env.backupXprocess.envx.local', 'cat .env.backup?process.env?.local'],
+    ['/w/other-project/.env.backupXprocess.envx.local', `cat .env.backup?'process.env?.local'`],
+  ]) {
+    assert.ok(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: new Set([file]) }), command);
+  }
+});
+
+test('L1 does not exempt optional-looking shell paths or directory globs', () => {
+  const paths = new Set(['/w/app/process.envx.local/.env.local']);
+  for (const command of [
+    'cat process.env?.local/.[e]nv.local',
+    `node -e 'const fs=require("fs"); console.log(fs.readFileSync(fs.globSync("process.env?.local/.[e]nv.local")[0],"utf8"))'`,
+    'cat "process.env?.local/.[e]nv.local"',
+    `node -e 'require("fs").globSync("process.env?.local")'`,
+    `node --eval "require('fs').globSync('process.env?.local')"`,
+    `node -e 'process.env?.NODE_ENV'; cat process.env?.local/.[e]nv.local`,
+    `node -e 'process.env?.NODE_ENV' && cat .env?.local`,
+    `node --eval "process.env?.NODE_ENV"; cat .env?.local`,
+  ]) {
+    assert.ok(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: paths }), command);
+  }
+});
+
 test('L1 still denies exact managed filenames embedded in paths, scripts and options', () => {
   const paths = new Set(['/w/other-project/.env']);
   for (const command of [
