@@ -36,6 +36,27 @@ test('L1 allows normal shell use', () => {
   }
 });
 
+test('L1 ignores a foreign .env when the command only says process.env', () => {
+  const foreign = new Set(['/w/other/.env']);
+  const command = 'node -e "const v = process.env.TOKEN"';
+  assert.equal(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: foreign }), undefined);
+});
+
+test('L1 allows program-side --env-file loading but still denies reads', () => {
+  const paths = new Set([FILE, '/w/other/.env']);
+  const d = (command) => readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: paths });
+  for (const command of [
+    'node --env-file=.env.local task.mjs',
+    'node --env-file .env.local --input-type=module <<\'NODE\'\nconst k = process.env.API_KEY;\nNODE',
+    'node --env-file-if-exists=".env.local" app.js',
+  ]) assert.equal(d(command), undefined, command);
+  for (const command of [
+    'node --env-file=.env.local -e "require(\'fs\').readFileSync(\'.env.local\')"',
+    'cat .env.local',
+    'node -e "require(\'fs\').readFileSync(\'/w/other/.env\')"',
+  ]) assert.ok(d(command), command);
+});
+
 test('L1 is inert when nothing is managed', () => {
   assert.equal(readDenial({ tool: 'read', args: { file_path: FILE }, cwd, protectedPaths: new Set() }), undefined);
 });
