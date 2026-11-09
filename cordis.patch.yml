@@ -3,4 +3,4 @@
 # is discovered from `dsh.client` in package.json.
 - insert:
     - id: dsh-secrets
-      name: dsh-secrets
+      name: '@siyuqian/dsh-secrets'

@@ -44,11 +44,15 @@ Other rules:
 
 Requires DeepSeek Harness 0.2.x and Node 22 or later.
 
-From inside a Harness session, ask the agent to install the bundle:
+After the first scoped npm release has been published, install the registry package from inside a Harness session:
 
 ```
-plugin_manager install_bundle  target: https://github.com/SiyuQian/dsh-secrets.git
+plugin_manager install_bundle  target: @siyuqian/dsh-secrets
 ```
+
+The scoped package belongs to this repository; the unscoped npm package `dsh-secrets` is a different project. A registry installation under its own name (not an `npm:` alias) enables DSH's native **Plugins → Secrets → Version / Recheck** section. Git and local directory installations do not offer native version checks.
+
+To migrate an existing installation, record its installed source, version, enabled state, and any profile row overrides first. Publish and verify the scoped package before removing the old bundle through Plugin Manager, then install `@siyuqian/dsh-secrets` with the recorded enabled state. Keep the row id `dsh-secrets`, remove or update only a stale `name: dsh-secrets` assertion on that row, and retain all config values. The registry directory, RPC methods, and secret-file paths remain unchanged. If installation fails, reinstall the recorded original source. Never install both package names together.
 
 Or clone the repo and install from the local directory:
 
@@ -65,7 +69,7 @@ Optional. Set these in your profile `cordis.patch.yml`:
 
 ```yaml
 - id: dsh-secrets
-  name: dsh-secrets
+  name: '@siyuqian/dsh-secrets'
   config:
     timeoutMs: 600000        # form timeout, default 10 min
     dataDir: /abs/path       # registry location, default $DSH_HOME/plugins/dsh-secrets
@@ -90,6 +94,20 @@ npm test   # node:test; Client tests use React and react-test-renderer
 | [API findings](./docs/api-findings.md) / [API 调研结论](./docs/api-findings.zh-CN.md) | The Harness APIs this plugin relies on, with sources |
 
 Keep both documentation editions in sync when changing behavior, commands, or security limits. Code identifiers, protocol fields, and shared command examples remain in English. The bundled agent skill uses one English source so agents receive the same safety instructions in either UI language.
+
+## Publish
+
+Use an npm account with write access to the `@siyuqian` scope. Do not store tokens in the repository.
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm pack --dry-run
+npm whoami --registry=https://registry.npmjs.org/
+npm publish --access public
+```
+
+Confirm the published version and repository with `npm view @siyuqian/dsh-secrets version repository`. Bump the manifest and lockfile versions together before subsequent releases; npm versions cannot be overwritten. Only migrate a profile after the published package has been verified.
 
 ## License
 

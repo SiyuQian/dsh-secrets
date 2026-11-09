@@ -1,5 +1,5 @@
 {
-  "name": "dsh-secrets",
+  "name": "@siyuqian/dsh-secrets",
   "version": "0.1.0",
   "description": "Securely collect credentials from the user into 0600 dotenv files without exposing values to the model, with read guards, output redaction, and exfiltration approval.",
   "license": "MIT",
@@ -25,7 +25,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": {
     "node": ">=22"

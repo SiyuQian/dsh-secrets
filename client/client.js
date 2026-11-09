@@ -3,7 +3,7 @@
 // Values go straight to the Host over /api/dsh-secrets.submit and are cleared
 // from component state right after; nothing is persisted in the browser.
 window.__ModuleLoader__.load({
-  id: 'dsh-secrets',
+  id: '@siyuqian/dsh-secrets',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
