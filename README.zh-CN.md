@@ -44,11 +44,15 @@
 
 需要 DeepSeek Harness 0.2.x 和 Node 22 或更高版本。
 
-在 Harness 会话中，让 Agent 安装该 bundle：
+首次 scoped npm 版本发布后，在 Harness 会话中安装 registry 包：
 
 ```
-plugin_manager install_bundle  target: https://github.com/SiyuQian/dsh-secrets.git
+plugin_manager install_bundle  target: @siyuqian/dsh-secrets
 ```
+
+此 scoped 包对应本仓库；npm 上未加 scope 的 `dsh-secrets` 是另一个项目。以包本名安装 registry 版本（不要使用 `npm:` 别名），才会显示 DSH 原生的「插件 → Secrets → 版本／重新检查」区域。Git 和本地目录安装不提供原生版本检查。
+
+迁移已有安装前，先记录原安装来源、版本、启用状态及 profile 行覆盖配置。先发布并验证 scoped 包，再通过插件管理器移除旧 bundle，然后按原启用状态安装 `@siyuqian/dsh-secrets`。保留行 id `dsh-secrets` 和所有 config 值，仅移除或更新该行过时的 `name: dsh-secrets` 名称断言。注册信息目录、RPC 方法和凭据文件路径均不变。安装失败时，按记录的原来源恢复。不要同时安装新旧两个包名。
 
 也可以克隆仓库后从本地目录安装：
 
@@ -65,7 +69,7 @@ git clone https://github.com/SiyuQian/dsh-secrets.git
 
 ```yaml
 - id: dsh-secrets
-  name: dsh-secrets
+  name: '@siyuqian/dsh-secrets'
   config:
     timeoutMs: 600000        # form timeout, default 10 min
     dataDir: /abs/path       # registry location, default $DSH_HOME/plugins/dsh-secrets
@@ -92,6 +96,20 @@ npm test   # node:test; Client tests use React and react-test-renderer
 | [API findings](./docs/api-findings.md) / [API 调研结论](./docs/api-findings.zh-CN.md) | 插件依赖的 Harness API 及其依据 |
 
 修改行为、命令或安全限制时，请同步更新中英文文档。代码标识符、协议字段和共用命令示例保持英文。内置 Agent skill 使用同一份英文源文档，确保两种界面语言下的 Agent 接收相同的安全指令。
+
+## 发布
+
+使用有权写入 `@siyuqian` scope 的 npm 账号，不要把 token 存进仓库。
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm pack --dry-run
+npm whoami --registry=https://registry.npmjs.org/
+npm publish --access public
+```
+
+用 `npm view @siyuqian/dsh-secrets version repository` 确认发布版本和仓库。后续发布前同步更新 manifest 与 lockfile 的版本号；npm 不允许覆盖已发布版本。只有确认发布包正确后才迁移 profile。
 
 ## 开源协议
 
