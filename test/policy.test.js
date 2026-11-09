@@ -75,6 +75,45 @@ test('L3 does not ask when a program reads the variable from its environment', (
   assert.deepEqual(ask('env API_KEY'), ['API_KEY']);
 });
 
+test('L1 does not mistake environment properties or longer filenames for a managed file', () => {
+  const paths = new Set(['/w/other-project/.env']);
+  for (const command of [
+    `kubectl -n payload exec deployment/payload -- node -e 'new Client({connectionString:process.env.DATABASE_URL})'`,
+    `node -e 'console.log(process.env.NODE_ENV)'`,
+    'cat .env.example',
+    'cat .env.local',
+    'git diff docs/setup.env.md',
+  ]) {
+    assert.equal(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: paths }), undefined, command);
+  }
+});
+
+test('L1 still denies exact managed filenames embedded in paths, scripts and options', () => {
+  const paths = new Set(['/w/other-project/.env']);
+  for (const command of [
+    'cat /w/other-project/.env',
+    'cat ../other-project/.env',
+    `python3 -c "print(open('/w/other-project/.env').read())"`,
+    'cat /w/other-project/.env> /tmp/output',
+    'cat /w/other-project/.env${UNSET_SUFFIX-}',
+    'cat /w/other-project/.env$(printf "")',
+    "cat /w/other-project/.env$''",
+  ]) {
+    assert.ok(readDenial({ tool: 'bash', args: { command }, cwd, protectedPaths: paths }), command);
+  }
+  // Bare names resolve to the managed file only inside its own directory.
+  for (const command of [
+    'cat .env',
+    'cat .env*',
+    'EMPTY=; cat $EMPTY.env',
+    'EMPTY=; cat "$EMPTY.env"',
+    'set --; cat $1.env',
+    'set --; cat "$1.env"',
+  ]) {
+    assert.ok(readDenial({ tool: 'bash', args: { command }, cwd: '/w/other-project', protectedPaths: paths }), command);
+  }
+});
+
 test('L1 is inert when nothing is managed', () => {
   assert.equal(readDenial({ tool: 'read', args: { file_path: FILE }, cwd, protectedPaths: new Set() }), undefined);
 });
