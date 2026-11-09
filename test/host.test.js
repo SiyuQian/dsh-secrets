@@ -152,6 +152,20 @@ test('registered guard allows process.env use without disabling read, approval o
   assert.match(JSON.stringify(output), /REDACTED:DATABASE_URL/u);
 });
 
+test('registered guard allows optional environment access while preserving L2 and L3', async () => {
+  const { dir, state, root, listeners, api } = await setup();
+  await api.store.write(join(dir, 'other-project', '.env.local'), { DATABASE_URL: SENTINEL });
+  const call = exec(root, 'bash', { command: `node -e 'connect(process.env?.DATABASE_URL)'` });
+
+  assert.equal(state.guards[0](call), undefined);
+  assert.ok(state.guards[0](exec(root, 'bash', { command: 'cat .env?' })));
+  const [pre] = listeners['tools/pre-execute'];
+  assert.equal((await pre(call, async () => ({ kind: 'allow' }))).kind, 'ask');
+  const output = await runPost(listeners, call, [{ type: 'text', text: SENTINEL }]);
+  assert.ok(!JSON.stringify(output).includes(SENTINEL));
+  assert.match(JSON.stringify(output), /REDACTED:DATABASE_URL/u);
+});
+
 test('cancel returns cancelled and a repeat in the same turn is refused', async () => {
   const { state, routes, root, listeners } = await setup();
   const args = { names: ['TOKEN'], purpose: 'p', env_file: '.env' };

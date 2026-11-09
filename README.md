@@ -39,6 +39,7 @@ Other rules:
 - Values shorter than 6 characters cannot be redacted. The settings page flags them.
 - Approval (L3) is per command. There is no "always allow for this session" button yet.
 - Only dotenv files are supported (no Keychain, no environment injection).
+- L1 allows optional environment access such as `process.env?.NODE_ENV` in simple quoted `node -e` / `node --eval` source. Complex quoting, escapes, templates, source containing `/`, and other interpreter forms remain conservative and may still produce false positives. JavaScript string literals and actual file globs remain checked.
 
 ## Install
 
